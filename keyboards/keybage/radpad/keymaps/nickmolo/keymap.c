@@ -22,6 +22,7 @@ enum layer_names {
     _TEST = 3,
 };
 
+uint8_t layer_count = 3;  //Zero indexed!
 uint8_t selected_layer = 0;
 
 // const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -80,10 +81,20 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
             tap_code16(KC_VOLD);
         }
     } else if (index == 1) { /* Right encoder */
-        if (clockwise) {
-            tap_code16(KC_MNXT);
-        } else {
-            tap_code16(KC_MPRV);
+        switch(biton32(layer_state)) {
+            case _FN:
+                if (!clockwise && selected_layer < layer_count){
+                    selected_layer ++;
+                } else if (clockwise && selected_layer > 0){
+                    selected_layer --;
+                }
+                layer_clear();
+                layer_on(selected_layer);
+                // clockwise ? tap_code(KC_U) : tap_code(KC_D);
+                // break;
+            default:
+                clockwise ? tap_code16(KC_MNXT) : tap_code16(KC_MPRV);
+                break;
         }
     }
     return true;
@@ -103,6 +114,12 @@ static void render_status(void) {
             break;
         case _FN:
             oled_write_P(PSTR("Macropad\n"), false);
+            break;
+        case _DEV:
+            oled_write_P(PSTR("DEV\n"), false);
+            break;
+        case _TEST:
+            oled_write_P(PSTR("TEST\n"), false);
             break;
         default:
             // Or use the write_ln shortcut over adding '\n' to the end of your string
