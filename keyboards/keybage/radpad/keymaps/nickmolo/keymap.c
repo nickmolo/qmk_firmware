@@ -17,12 +17,13 @@
 
 enum layer_names {
     _BASE = 0,
-    _FN = 1,
-    _DEV = 2,
-    _TEST = 3,
+    _ALTIUM = 1,
+    _FN = 2,
+    _DEV = 3,
+    _TEST = 4,
 };
 
-uint8_t layer_count = 3;  //Zero indexed!
+uint8_t layer_count = 4;  //Zero indexed!
 uint8_t selected_layer = 0;
 
 // const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -45,10 +46,17 @@ uint8_t selected_layer = 0;
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_BASE] = LAYOUT_4x4_encoders(
         KC_MUTE,                   KC_MPLY,
-        KC_ESC,  MO(_FN), KC_PEQL, KC_PAST,
+        KC_ESC,  MT(MOD_RALT, MO(_FN)), KC_PEQL, KC_PAST,
         KC_P7,   KC_P8,   KC_P9,   KC_PMNS,
         KC_P4,   KC_P5,   KC_P6,   KC_PPLS,
         KC_P1,   KC_P2,   KC_P3,   KC_P0
+    ),
+    [_ALTIUM] = LAYOUT_4x4_encoders(
+        _______,                   _______,
+        KC_PSLS, _______,  KC_F22,  _______,
+        KC_PAST, KC_F18,  KC_F19,  _______,
+        KC_NLCK, KC_F15,  KC_F16,  _______,
+        RESET,   _______, KC_F13,  KC_F14
     ),
     [_FN] = LAYOUT_4x4_encoders(
         _______,                   _______,
@@ -81,20 +89,27 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
             tap_code16(KC_VOLD);
         }
     } else if (index == 1) { /* Right encoder */
-        switch(biton32(layer_state)) {
-            case _FN:
-                if (!clockwise && selected_layer < layer_count){
+        if (get_mods() & MOD_MASK_ALT) {  // If a CTRL is being held
+            uint8_t mod_state = get_mods();// Store which mods are held
+            del_mods(MOD_MASK_ALT);       // Ignore all CTRL keys
+            if (!clockwise && selected_layer < layer_count){
                     selected_layer ++;
-                } else if (clockwise && selected_layer > 0){
+            } else if (clockwise && selected_layer > 0){
                     selected_layer --;
-                }
-                layer_clear();
-                layer_on(selected_layer);
-                // clockwise ? tap_code(KC_U) : tap_code(KC_D);
-                // break;
-            default:
-                clockwise ? tap_code16(KC_MNXT) : tap_code16(KC_MPRV);
-                break;
+            }
+            set_mods(mod_state);
+            layer_clear();
+            layer_on(selected_layer);
+
+        } else {
+            switch(biton32(layer_state)) {
+                case _ALTIUM:
+                    clockwise ? tap_code16(KC_PMNS) : tap_code16(KC_PPLS);
+                    break;
+                default:
+                    clockwise ? tap_code16(KC_MNXT) : tap_code16(KC_MPRV);
+                    break;
+            }
         }
     }
     return true;
@@ -111,6 +126,9 @@ static void render_status(void) {
     switch (get_highest_layer(layer_state)) {
         case _BASE:
             oled_write_P(PSTR("Numpad\n"), false);
+            break;
+        case _ALTIUM:
+            oled_write_P(PSTR("Altium\n"), false);
             break;
         case _FN:
             oled_write_P(PSTR("Macropad\n"), false);
